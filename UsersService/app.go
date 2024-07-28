@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -16,9 +15,11 @@ import (
 type App struct {
 	DB     *sqlx.DB
 	Router *mux.Router
+	Cache  Cache
 }
 
-func (a *App) Initialize(db *sqlx.DB) {
+func (a *App) Initialize(cache Cache, db *sqlx.DB) {
+	a.Cache = cache
 	a.DB = db
 	a.Router = mux.NewRouter()
 	a.initializeRoutes()
@@ -57,6 +58,12 @@ func (a *App) getUser(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
 		return
 	}
+	if value, err := a.Cache.getValue(id); err == nil && len(value) != 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(value))
+		return
+	}
 	user := User{ID: id}
 	if err := user.get(a.DB); err != nil {
 		switch err {
@@ -65,8 +72,16 @@ func (a *App) getUser(w http.ResponseWriter, r *http.Request) {
 		default:
 			respondWithError(w, http.StatusInternalServerError, err.Error())
 		}
+		return
 	}
-	respondWithJSON(w, http.StatusOK, user)
+	response, _ := json.Marshal(user)
+	if err := a.Cache.setValue(user.ID, response); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
 }
 
 func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
@@ -97,12 +112,20 @@ func (a *App) createUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	if err := user.create(a.DB); err != nil {
-		fmt.Println(err.Error())
+	// get sequences from Postgres
+	a.DB.Get(&user.ID, "SELECT nextval('users_id_seq)")
+
+	JSONByte, _ := json.Marshal(user)
+	if err := a.Cache.setValue(user.ID, string(JSONByte)); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	respondWithJSON(w, http.StatusOK, user)
+
+	if err := a.Cache.enqueueValue(createUsersQueue, user.ID); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respondWithJSON(w, http.StatusCreated, user)
 }
 
 func (a *App) updateUser(w http.ResponseWriter, r *http.Request) {
