@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 
@@ -63,11 +62,7 @@ func main() {
 	flag.Parse()
 	cache.Pool = cache.NewCachePool()
 
-	connectionString := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
-		os.Getenv("APP_DB_USERNAME"),
-		os.Getenv("APP_DB_PASSWORD"),
-		os.Getenv("APP_DB_NAME"),
-	)
+	connectionString := os.Getenv("DATABASE_DEV_URL")
 
 	db, err := sqlx.Open("postgres", connectionString)
 	if err != nil {
@@ -80,5 +75,5 @@ func main() {
 
 	a := App{}
 	a.Initialize(cache, db)
-	a.Run(":8080")
+	a.Run(":3000")
 }
