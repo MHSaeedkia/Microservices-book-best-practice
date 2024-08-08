@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	DBNAME     = "FamouseNewsService"
+	DBNAME     = "testing" //"FamouseNewsService"
 	COLLECTION = "News"
 )
 

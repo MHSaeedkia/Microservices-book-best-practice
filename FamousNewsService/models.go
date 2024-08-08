@@ -15,14 +15,14 @@ import (
 )
 
 type News struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty"`
-	Title        string             `bson:"title" binding:"required"`
-	Content      string             `bson:"content" binding:"required"`
-	Author       string             `bson:"author" binding:"required"`
-	Created_at   time.Time          `bson:"created_at"`
-	Published_at time.Time          `bson:"published_at"`
-	News_type    string             `bson:"new_type"`
-	Tags         string             `bson:"tags"`
+	ID           primitive.ObjectID `bson:"_id,omitempty" json:"_id"`
+	Title        string             `bson:"title" json:"title" binding:"required"`
+	Content      string             `bson:"content" json:"content" binding:"required"`
+	Author       string             `bson:"author" json:"author" binding:"required"`
+	Created_at   time.Time          `bson:"created_at" json:"created_at"`
+	Published_at time.Time          `bson:"published_at" json:"published_at"`
+	News_type    string             `bson:"new_type" json:"new_type"`
+	Tags         string             `bson:"tags" json:"tags"`
 }
 
 func InitializeDB(ctx context.Context, uri string) (*mongo.Client, error) {
@@ -60,8 +60,7 @@ func (news *News) Get_single_news(ctx context.Context, collection *mongo.Collect
 	filter := bson.D{{Key: "_id", Value: news.ID}}
 	err := collection.FindOne(ctx, filter).Decode(&news)
 	if err != nil {
-		fmt.Println("No news was found with the provided ID")
-		return err
+		return fmt.Errorf("no news was found with the provided ID")
 	}
 	return nil
 }
