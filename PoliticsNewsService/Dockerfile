@@ -1,6 +1,6 @@
 FROM golang:latest
 
-LABEL Name=famous_news_service Version=0.0.1
+LABEL Name=politics_news_service Version=0.0.1
 
 RUN mkdir -p /go/src \ 
     && mkdir -p /go/bin \ 

@@ -1,4 +1,7 @@
+version: '2.1'
+
 services:
+
   redis:
     container_name: redis
     image: redis
@@ -6,17 +9,27 @@ services:
      - "6379:6379"
     healthcheck:
       test: exit 0
+    restart: always
+
+  mongo: 
+    image: mongo:latest 
+    container_name: "mongodb" 
+    ports: 
+        - 27017:27017 
+    command: mongod --smallfiles --logpath=/dev/null
+    restart: always
 
   users-service-db:
     container_name: users-service-db
-    build: ./db      
+    build: ./UsersService/db
     ports:
-      - 5435:5432 # expose ports - HOST:CONTAINER
+      - 5435:5432
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     healthcheck:
       test: exit 0
+    restart: always
 
   userservice:
     image: userservice
@@ -26,9 +39,9 @@ services:
       - APP_RD_AUTH=password
       - APP_RD_DBNAME=0
       - APP_SETTINGS=project.config.DevelopmentConfig
-      - DATABASE_URL=postgres://postgres:postgres@users-servicedb:5432/users_prod?sslmode=disable
-      - DATABASE_DEV_URL=postgres://postgres:postgres@users-servicedb:5432/users_dev?sslmode=disable
-      - DATABASE_TEST_URL=postgres://postgres:postgres@users-servicedb:5432/users_test?sslmode=disable
+      - DATABASE_URL=postgres://postgres:postgres@users-service-db:5432/users_prod?sslmode=disable
+      - DATABASE_DEV_URL=postgres://postgres:postgres@users-service-db:5432/users_dev?sslmode=disable
+      - DATABASE_TEST_URL=postgres://postgres:postgres@users-service-db:5432/users_test?sslmode=disable
     depends_on:
       users-service-db:
         condition: service_healthy
@@ -37,6 +50,55 @@ services:
     links:
       - users-service-db
       - redis
+    restart: always
+
+  famous_news_service: 
+    image: famous_news_service 
+    build: ./FamousNewsService 
+    volumes: 
+      - '.:/usr/src/app' 
+    environment: 
+      - APP_DEBUG=False
+      - APP_DATABASE_NAME=famous
+      - APP_DATABASE_HOST=mongodb://localhost:27017  
+      - APP_DATABASE_COLLECTION=news
+    depends_on: 
+      - mongo 
+    links: 
+      - mongo 
+    restart: always
+ 
+  politics_news_service: 
+    image: politics_news_service 
+    build: ./PoliticsNewsService 
+    volumes: 
+      - '.:/usr/src/app' 
+    environment: 
+      - APP_DEBUG=False
+      - APP_DATABASE_NAME=politics
+      - APP_DATABASE_HOST=mongodb://localhost:27017  
+      - APP_DATABASE_COLLECTION=news
+    depends_on: 
+      - mongo 
+    links: 
+      - mongo 
+    restart: always
+ 
+  sports_news_service: 
+    image: sports_news_service 
+    build: ./SportsNewsService 
+    volumes: 
+      - '.:/usr/src/app' 
+    environment: 
+      - APP_DEBUG=False
+      - APP_DATABASE_NAME=sports
+      - APP_DATABASE_HOST=mongodb://localhost:27017  
+      - APP_DATABASE_COLLECTION=news
+    depends_on: 
+      - mongo 
+    links: 
+      - mongo 
+    restart: always
 
   proxy:
     container_name: userservice_loadbalance
@@ -45,3 +107,4 @@ services:
       - "80:80"
     links:
       - userservice
+    restart: always
