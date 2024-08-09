@@ -65,7 +65,7 @@ func (news *News) Get_single_news(ctx context.Context, collection *mongo.Collect
 	return nil
 }
 
-func Get_all_news(ctx context.Context, collection *mongo.Collection, results []News, filter interface{}, number_page, limit string) ([]News, error) {
+func Get_all_news(ctx context.Context, collection *mongo.Collection, filter interface{}, number_page, limit string) ([]News, error) {
 	numPage, err := strconv.Atoi(number_page)
 	if err != nil {
 		return nil, err
@@ -88,11 +88,12 @@ func Get_all_news(ctx context.Context, collection *mongo.Collection, results []N
 	if err != nil {
 		return nil, err
 	}
-	err = cursor.All(ctx, &results)
+	news := []News{}
+	err = cursor.All(ctx, &news)
 	if err != nil {
 		return nil, err
 	}
-	return results, nil
+	return news, nil
 }
 
 func (news *News) Publish_news(ctx context.Context, collection *mongo.Collection) error {
