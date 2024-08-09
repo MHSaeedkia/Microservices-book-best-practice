@@ -1,4 +1,0 @@
-# Ignore go.mod and go.sum in all subdirectories
-*/go.mod
-*/go.sum
-
