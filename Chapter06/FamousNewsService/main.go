@@ -6,17 +6,24 @@ import (
 	"log"
 	"os"
 	"strconv"
+
+	"github.com/MHSaeedkia/microservice/FamousNewsService/query_db"
 )
 
 type CONFIG struct {
-	debug      bool
-	dbSettings MONGODB_SETTINGS
+	debug             bool
+	queryDbSettings   QUERY_DB_SETTINGS
+	commandDbSettings COMMAND_DB_SETTINGS
 }
 
-type MONGODB_SETTINGS struct {
+type QUERY_DB_SETTINGS struct {
 	db         string
 	host       string
 	collection string
+}
+
+type COMMAND_DB_SETTINGS struct {
+	uri string
 }
 
 func main() {
@@ -27,16 +34,30 @@ func main() {
 		log.Fatal(err)
 	}
 	flag.BoolVar(&config.debug, "debug", debugValue, "If it true , we are in Development -- If it is false , we are in Production")
-	flag.StringVar(&config.dbSettings.db, "db_name", os.Getenv("APP_DATABASE_NAME"), "Database name")
-	flag.StringVar(&config.dbSettings.host, "db_host", os.Getenv("APP_DATABASE_HOST"), "Database host")
-	flag.StringVar(&config.dbSettings.collection, "db_collection", os.Getenv("APP_DATABASE_COLLECTION"), "Database collection")
+	flag.StringVar(&config.queryDbSettings.db, "db_query_name", os.Getenv("APP_DATABASE_NAME"), "Database name")
+	flag.StringVar(&config.queryDbSettings.host, "db_query_host", os.Getenv("APP_DATABASE_HOST"), "Database host")
+	flag.StringVar(&config.queryDbSettings.collection, "db_query_collection", os.Getenv("APP_DATABASE_COLLECTION"), "Database collection")
+	flag.StringVar(&config.commandDbSettings.uri, "db_command", os.Getenv("APP_DATABASE_COMMAND"), "Database command")
 
-	client, err := InitializeDB(context.TODO(), config.dbSettings.host)
+	client, err := query_db.InitializeQueryDB(context.TODO(), config.queryDbSettings.host)
 	if err != nil {
 		panic(err)
 	}
 
+	// connection, err := command_db.InitializeCommandDB(config.commandDbSettings.uri)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	queryNewsModel := query_db.QueryNewsModel{}
+	go func() {
+		err := queryNewsModel.RpcQueryConnection()
+		if err != nil {
+			panic(err)
+		}
+	}()
+
 	a := App{}
-	a.Initialize(client, config.dbSettings.db, config.dbSettings.collection)
+	a.Initialize(client, config.queryDbSettings.db, config.queryDbSettings.collection)
 	a.Run(":5000")
 }
